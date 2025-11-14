@@ -1,0 +1,165 @@
+
+R version 4.5.1 (2025-06-13 ucrt) -- "Great Square Root"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # Sample data with missing values (NA)
+> data <- data.frame(
++   A = c(1, 2, NA, 4, 5),
++   B = c("x", "y", "z", NA, "w"),
++   C = c(10, 20, 30, NA, 50)
++ )
+> 
+> # Check for the total number of missing values across the whole data frame
+> sum(is.na(data))
+[1] 3
+> 
+> # Check for the number of missing values per column
+> sapply(data, function(x) sum(is.na(x)))
+A B C 
+1 1 1 
+> 
+> # Check for rows that have at least one missing value
+> data[!complete.cases(data), ]
+   A    B  C
+3 NA    z 30
+4  4 <NA> NA
+> # Sample data with special values
+> data_special <- data.frame(
++   X = c(1, 2, 0/0, 4, 1/0),
++   Y = c(5, 6, -1/0, 8, 9)
++ )
+> 
+> # Check for NaN (Not a Number) per column
+> sapply(data_special, function(x) sum(is.nan(x)))
+X Y 
+1 0 
+> 
+> # Check for Inf and -Inf (Infinite) per column
+> sapply(data_special, function(x) sum(is.infinite(x)))
+X Y 
+1 1 
+> # Sample data with a potential outlier (100)
+> data_outlier <- c(10, 12, 15, 13, 11, 100, 14, 12)
+> 
+> # Calculate quartiles and IQR
+> Q1 <- quantile(data_outlier, 0.25)
+> Q3 <- quantile(data_outlier, 0.75)
+> IQR_val <- IQR(data_outlier)
+> 
+> # Define outlier boundaries
+> lower_bound <- Q1 - 1.5 * IQR_val
+> upper_bound <- Q3 + 1.5 * IQR_val
+> 
+> # Detect outliers
+> outliers <- data_outlier[data_outlier < lower_bound | data_outlier > upper_bound]
+> print(outliers)
+[1] 100
+> 
+> # Visualization
+> boxplot(data_outlier, main = "Boxplot for Outlier Detection")
+> # Sample data with inconsistencies (B should be numeric, C should be a date)
+> data_inconsist <- data.frame(
++   A = c(1, 2, 3),
++   B = c(10, "20a", 30), # Inconsistent value "20a"
++   C = c("01/15/2024", "2024-01-16", "17-Jan-24"), # Inconsistent date formats
++   stringsAsFactors = FALSE
++ )
+> 
+> # Check data types (Localization issues often manifest as wrong types)
+> str(data_inconsist)
+'data.frame':   3 obs. of  3 variables:
+ $ A: num  1 2 3
+ $ B: chr  "10" "20a" "30"
+ $ C: chr  "01/15/2024" "2024-01-16" "17-Jan-24"
+> 
+> # For Inconsistency (e.g., non-numeric data in a numeric column B):
+> # Check which values are NOT convertible to numeric
+> is_not_numeric <- is.na(as.numeric(data_inconsist$B)) & !is.na(data_inconsist$B)
+Warning message:
+NAs introduced by coercion 
+> data_inconsist[is_not_numeric, ]
+  A   B          C
+2 2 20a 2024-01-16
+> # Data from Step 1 with outlier
+> data_outlier <- c(10, 12, 15, 13, 11, 100, 14, 12)
+> 
+> # Check distribution (highly skewed due to 100)
+> # hist(data_outlier)
+> 
+> # Apply Log Transformation (log(x+1) is often used to handle zeros, though not strictly needed here)
+> transformed_data <- log(data_outlier)
+> 
+> # Compare the original and transformed outlier value
+> cat("Original Outlier (100): ", 100, "\n")
+Original Outlier (100):  100 
+> cat("Transformed Outlier (log(100)): ", log(100), "\n")
+Transformed Outlier (log(100)):  4.60517 
+> cat("Original Median: ", median(data_outlier), "\n")
+Original Median:  12.5 
+> cat("Transformed Median: ", median(transformed_data), "\n")
+Transformed Median:  2.524928 
+> # The transformation compresses the extreme value
+> # Sample data with inconsistent gender values
+> df_gender <- data.frame(
++   ID = 1:5,
++   Gender = c("M", "m", "F", "Female", "Male"),
++   stringsAsFactors = FALSE
++ )
+> 
+> # Deductive Correction: Standardize "Male" to "M" and "Female" to "F"
+> df_gender$Gender_Corrected <- ifelse(
++   toupper(df_gender$Gender) %in% c("M", "MALE"), "M",
++   ifelse(toupper(df_gender$Gender) %in% c("F", "FEMALE"), "F", df_gender$Gender)
++ )
+> 
+> print(df_gender)
+  ID Gender Gender_Corrected
+1  1      M                M
+2  2      m                M
+3  3      F                F
+4  4 Female                F
+5  5   Male                M
+> 
+> # Example (Standardizing Dates): using lubridate package is best
+> # install.packages("lubridate")
+> # library(lubridate)
+> # df_dates$Clean_Date <- parse_date_time(df_dates$Raw_Date, c("m/d/Y", "Y-m-d", "d-b-y"))
+> # Data from Step 1 with missing values
+> data_na <- data.frame(
++   C = c(10, 20, 30, NA, 50, 1000) # Added 1000 to show why median is better
++ )
+> 
+> # 1. Calculate the imputation value (Median is preferred for robustness)
+> median_val <- median(data_na$C, na.rm = TRUE)
+> 
+> # 2. Perform Deterministic Imputation
+> data_na$C_Imputed <- ifelse(is.na(data_na$C), median_val, data_na$C)
+> 
+> print(data_na)
+     C C_Imputed
+1   10        10
+2   20        20
+3   30        30
+4   NA        30
+5   50        50
+6 1000      1000
+> 
+> # Note: Deterministic imputation simplifies variance and should be used cautiously.
+> # More advanced methods include Stochastic (random) Imputation or Model-Based Imputation (e.g., kNN).
+> save.image("C:\\Users\\Sameer\\Downloads\\r_assignment")
+> 
